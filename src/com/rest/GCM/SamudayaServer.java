@@ -28,7 +28,10 @@ import javax.ws.rs.core.Request;
 import com.google.android.gcm.server.Message;
 import com.google.android.gcm.server.Sender;
  
- 
+/**
+ * @author
+ *
+ */
 @Path("/person")
 public class SamudayaServer { 
  
@@ -121,10 +124,10 @@ public class SamudayaServer {
     @Path("interest")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.APPLICATION_JSON)
-    public String postInterest(MultivaluedMap<String, String> interestParams){
+    public String postInterest(MultivaluedMap<String, String> interestParams, List<Integer> interestList){
     	String communityId = interestParams.getFirst(COMMUNITY_ID);
         String userName = interestParams.getFirst(USER_NAME);
-        List<Integer> interestId = interestParams.getFirst(INTEREST_IDS);
+        List<Integer> interestId = interestList.getFirst(INTEREST_IDS);
         
         try {
 			stmt = conn.createStatement();
@@ -151,7 +154,7 @@ public class SamudayaServer {
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.APPLICATION_JSON)
     public String postMessage(MultivaluedMap<String, String> messageParams){
-    	int interestId = messageParams.getFirst(INTEREST_ID);
+    	String interestId = messageParams.getFirst(INTEREST_ID);
         String userName = messageParams.getFirst(USER_NAME);
         String communityId = messageParams.getFirst(COMMUNITY_ID);
         String message = messageParams.getFirst(MESSAGE);
@@ -165,8 +168,17 @@ public class SamudayaServer {
         PreparedStatement preparedStmt = conn.prepareStatement(query);
         preparedStmt.setString (1, communityId);
         preparedStmt.setString (2, userName);
-        preparedStmt.setInt(3, interestId);
-        preparedStmt.execute();
+        preparedStmt.setInt(3, Integer.parseInt(interestId));
+        ResultSet rs = preparedStmt.executeQuery(query );
+        
+        while (rs.next()) {
+        	String deviceId = rs.getString("DeviceId");
+        	Sender sender = new Sender(GOOGLE_SERVER_KEY);
+			Message msgToGCM = new Message.Builder().timeToLive(30)
+					.delayWhileIdle(true).addData(MESSAGE_KEY, message).build();
+			System.out.println("regId: " + deviceId);
+			sender.send(msgToGCM, deviceId, 1);
+          }
         }
         
         catch (SQLException e) {
@@ -179,75 +191,75 @@ public class SamudayaServer {
     }
     
     
-    // Use data from the client source to create a new Person object, returned in JSON format.  
-    @POST
-    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Person postPerson(
-            MultivaluedMap<String, String> personParams
-            ) throws IOException, ClassNotFoundException, SQLException { 
-        String firstName = personParams.getFirst(FIRST_NAME);
-        String lastName = personParams.getFirst(LAST_NAME);
-        String email = personParams.getFirst(EMAIL);
-        String regID = personParams.getFirst(REG_ID);
-        System.out.println("Storing posted " + firstName + " " + lastName + "  " + email);
-         
-        person.setFirstName(firstName);
-        person.setLastName(lastName);
-        person.setEmail(email);
-        person.setRegId(regID);
-        
-        System.out.println("person info: " + person.getFirstName() + " " + person.getLastName() + " " + person.getEmail());
-        
-        
-        
-        Class.forName("com.mysql.jdbc.Driver");
-        Connection conn = null; 
-        Statement stmt = null;
-        conn = DriverManager.getConnection("jdbc:mysql://hostname:port/dbname","root", "root");
-        
-        System.out.println("Creating statement...");
-        stmt = conn.createStatement();
-        String sql = "";
-        ResultSet rs = stmt.executeQuery(sql);
-        
-        while(rs.next()){
-            int id  = rs.getInt("id");
-            String first = rs.getString("first");
-            String last = rs.getString("last");
-
-         }
-         rs.close();
-         stmt.close();
-         conn.close();
-         
-        
-			PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter("C:\\Users\\ASHWIN\\Middleware\\GCM\\GCMRegId.txt", true) ) );
-			writer.println(regID);
-			writer.close();
-		
-
-			try {
-				BufferedReader br = new BufferedReader(new FileReader(
-						"C:\\Users\\ASHWIN\\Middleware\\GCM\\GCMRegId.txt"));
-				
-					while ((regID = br.readLine()) != null) {
-				String userMessage = firstName;
-				Sender sender = new Sender(GOOGLE_SERVER_KEY);
-				Message message = new Message.Builder().timeToLive(30)
-						.delayWhileIdle(true).addData(MESSAGE_KEY, userMessage).build();
-				System.out.println("regId: " + regID);
-				sender.send(message, regID, 1);
-			}
-			
-			} catch (IOException ioe) {
-				ioe.printStackTrace();
-				
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-        return person;
-                         
-    }
+//    // Use data from the client source to create a new Person object, returned in JSON format.  
+//    @POST
+//    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+//    @Produces(MediaType.APPLICATION_JSON)
+//    public Person postPerson(
+//            MultivaluedMap<String, String> personParams
+//            ) throws IOException, ClassNotFoundException, SQLException { 
+//        String firstName = personParams.getFirst(FIRST_NAME);
+//        String lastName = personParams.getFirst(LAST_NAME);
+//        String email = personParams.getFirst(EMAIL);
+//        String regID = personParams.getFirst(REG_ID);
+//        System.out.println("Storing posted " + firstName + " " + lastName + "  " + email);
+//         
+//        person.setFirstName(firstName);
+//        person.setLastName(lastName);
+//        person.setEmail(email);
+//        person.setRegId(regID);
+//        
+//        System.out.println("person info: " + person.getFirstName() + " " + person.getLastName() + " " + person.getEmail());
+//        
+//        
+//        
+//        Class.forName("com.mysql.jdbc.Driver");
+//        Connection conn = null; 
+//        Statement stmt = null;
+//        conn = DriverManager.getConnection("jdbc:mysql://hostname:port/dbname","root", "root");
+//        
+//        System.out.println("Creating statement...");
+//        stmt = conn.createStatement();
+//        String sql = "";
+//        ResultSet rs = stmt.executeQuery(sql);
+//        
+//        while(rs.next()){
+//            int id  = rs.getInt("id");
+//            String first = rs.getString("first");
+//            String last = rs.getString("last");
+//
+//         }
+//         rs.close();
+//         stmt.close();
+//         conn.close();
+//         
+//        
+//			PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter("C:\\Users\\ASHWIN\\Middleware\\GCM\\GCMRegId.txt", true) ) );
+//			writer.println(regID);
+//			writer.close();
+//		
+//
+//			try {
+//				BufferedReader br = new BufferedReader(new FileReader(
+//						"C:\\Users\\ASHWIN\\Middleware\\GCM\\GCMRegId.txt"));
+//				
+//					while ((regID = br.readLine()) != null) {
+//				String userMessage = firstName;
+//				Sender sender = new Sender(GOOGLE_SERVER_KEY);
+//				Message message = new Message.Builder().timeToLive(30)
+//						.delayWhileIdle(true).addData(MESSAGE_KEY, userMessage).build();
+//				System.out.println("regId: " + regID);
+//				sender.send(message, regID, 1);
+//			}
+//			
+//			} catch (IOException ioe) {
+//				ioe.printStackTrace();
+//				
+//			} catch (Exception e) {
+//				e.printStackTrace();
+//			}
+//        return person;
+//                         
+//    }
     
 }
